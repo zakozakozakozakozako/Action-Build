@@ -129,6 +129,8 @@
 ------
  
 # Changelog
+-- Automatically download and modify the ZRAM add-on module when `ZRAM` is enabled.
+-- Fix issues where `ZRAM` is unusable or unable to launch non-system apps.
 -- Fix the problem that the official script cannot run when the kernel version is between `5.15.0-5.15.123`, and the result of the quick compilation has problems. [@zzh20188](https://github.com/zzh20188)  
 -- Support `BBR`.  
 -- Allow custom kernel suffix.  <- **`beta`**
@@ -140,7 +142,7 @@
 -- Support ultra-fast builds for some models `(currently supports 5.10, 5.15, 6.1, 6.6)`  
 -- Fixed OnePlus Ace5Pro and OnePlus 13 boot issues after build failure; using official dtbo now allows booting directly. [@reigadegr](https://github.com/reigadegr)  
 -- Support displaying user-defined inputs during `Show selected inputs debug` step; workflow name will also reflect some values.  
--- Removed potential version codes from the suffix of `ak3.zip` config file, replaced with exact `Android` version numbers `XX.X.X`.
+-- Removed potential version codes from the suffix of `Anykernel3.zip` config file, replaced with exact `Android` version numbers `XX.X.X`.
 ```
 Examples:
 AnyKernel3_SukiSUUltra_12896_oneplus_ace2pro_Android15.0.0_KPM_VFS.zip  
