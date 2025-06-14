@@ -108,11 +108,22 @@
 
 
 ------
-> [!CAUTION]  
-> **Do not install modules when performing a root-preserving update!**
-
-> [!TIP]  
-> Remember to press **Volume Down** when installing modules!
+> [!CAUTION]
+> Do **NOT** install modules during **root-preserving updates**!
+>
+> Remember to press **Volume Down** when installing the module!
+>
+> If your device is **`sm8750`**, and you previously used the official script to build,
+> but now want to use **`Fast Build`**, please **restore** the following images first:
+> `dtbo.img`, `system_dlkm.erofs.img`, `vendor_dlkm.img`, and `vendor_boot.img`,
+> **otherwise the device may fail to boot!**
+>
+> If you have enabled the **`ZRAM`** algorithm, make sure to install the ZRAM module
+> **before rebooting** after flashing with `Anykernel3`. You may need to adjust some parameters manually.
+> Note: The **5.10 kernel does NOT support `ZRAM`**, as the `zram.ko` module path could not be found.
+>
+> We've noticed that some **`sm8650`** devices fail to boot after updating to **830** due to kernel version changes.
+> Please wait for upstream sources to be updated.
 
  
 ------
