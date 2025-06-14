@@ -102,7 +102,7 @@ on:
         type: boolean
         description: "是否添加更多的ZRAM算法？"
         required: true
-        default: false
+        default: true
 
 jobs:
   build:
@@ -290,7 +290,7 @@ jobs:
 
           if [ "$GKI_V" == "android13-5.15" ] && [ "$SUBLEVEL" -lt 123 ]; then
             echo "修复内核版本5.15.0到5.15.123可能存在的一些遗留问题"
-            curl -Lo fix_5.15.legacy.patch --retry 5 --retry-delay 2 --retry-connrefused https://raw.githubusercontent.com/Numbersf/Action-Build/main/patches/fix_5.15.legacy
+            curl -Lo fix_5.15.legacy.patch --retry 5 --retry-delay 2 --retry-connrefused https://raw.githubusercontent.com/Numbersf/Action-Build/SukiSU-Ultra/patches/fix_5.15.legacy
             patch -p1 < fix_5.15.legacy.patch
             echo "fix_5.15_patch完成"
           fi
@@ -317,7 +317,7 @@ jobs:
         run: |
             cd kernel_workspace/kernel_platform/common
             sed -i '1iobj-y += hmbird_patch.o' drivers/Makefile
-            wget https://github.com/Numbersf/Action-Build/raw/main/patches/hmbird_patch.patch
+            wget https://github.com/Numbersf/Action-Build/raw/SukiSU-Ultra/patches/hmbird_patch.patch
             echo "正在打OGKI转换GKI补丁"
             patch -p1 -F 3 < hmbird_patch.patch
             echo "OGKI转换GKI_patch完成"
@@ -431,11 +431,6 @@ jobs:
                 echo "CONFIG_ZSMALLOC=y" >> "msm-kernel/arch/arm64/configs/${{ github.event.inputs.CPUD }}-GKI.config"
                 echo "CONFIG_ZRAM=y" >> "msm-kernel/arch/arm64/configs/${{ github.event.inputs.CPUD }}-GKI.config"
               fi
-              
-              echo "CONFIG_MODULE_SIG_FORCE=n" >> "$CONFIG_FILE"
-            elif [ "${{ github.event.inputs.KERNEL_VERSION }}" = "5.10" ] || [ "${{ github.event.inputs.KERNEL_VERSION }}" = "5.15" ]; then
-              rm "common/android/gki_aarch64_modules"
-              touch "common/android/gki_aarch64_modules"
             fi
 
             if grep -q "CONFIG_ZSMALLOC=y" "$CONFIG_FILE" && grep -q "CONFIG_ZRAM=y" "$CONFIG_FILE"; then
@@ -579,7 +574,7 @@ jobs:
       - name: Apply patch_linux and replace Image
         run: |
           cd kernel_workspace/kernel_platform/out/msm-kernel-${{ github.event.inputs.CPUD }}-${{ github.event.inputs.BUILD_METHOD }}/dist
-          curl -LO --retry 5 --retry-delay 2 --retry-connrefused https://raw.githubusercontent.com/Numbersf/Action-Build/main/patches/patch_linux
+          curl -LO --retry 5 --retry-delay 2 --retry-connrefused https://raw.githubusercontent.com/Numbersf/Action-Build/SukiSU-Ultra/patches/patch_linux
           chmod +x patch_linux
           ./patch_linux
           rm -f Image
