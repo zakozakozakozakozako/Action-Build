@@ -234,45 +234,6 @@ jobs:
           rm kernel_platform/common/android/abi_gki_protected_exports_* || echo "No protected exports!"
           rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || echo "No protected exports!"
 
-      - name: Upload mkcompile_h files (specific & all found)
-        run: |
-          set -e
-          cd kernel_workspace/kernel_platform
-
-          # 准备上传目录
-          mkdir -p /tmp/upload_mkcompile_h/specific
-          mkdir -p /tmp/upload_mkcompile_h/found
-
-          # 拷贝指定路径的两个文件（如果存在）
-          for f in ./common/scripts/mkcompile_h ./msm-kernel/scripts/mkcompile_h; do
-            if [ -f "$f" ]; then
-              echo "Copying specific: $f"
-              mkdir -p "/tmp/upload_mkcompile_h/specific/$(dirname "$f")"
-              cp "$f" "/tmp/upload_mkcompile_h/specific/$f"
-            fi
-          done
-
-          # 全局搜索所有 mkcompile_h 文件并拷贝
-          echo "::group::Searching mkcompile_h"
-          find . -type f -name mkcompile_h | tee /tmp/mkcompile_h_list.txt | while read -r file; do
-            echo "Copying found: $file"
-            mkdir -p "/tmp/upload_mkcompile_h/found/$(dirname "$file")"
-            cp "$file" "/tmp/upload_mkcompile_h/found/$file"
-          done
-          echo "::endgroup::"
-    
-      - name: Upload specific mkcompile_h files
-        uses: actions/upload-artifact@v4
-        with:
-          name: specific-mkcompile_h
-          path: /tmp/upload_mkcompile_h/specific
-
-      - name: Upload all found mkcompile_h files
-        uses: actions/upload-artifact@v4
-        with:
-          name: all-found-mkcompile_h
-          path: /tmp/upload_mkcompile_h/found
-
       # 自定义内核后缀
       - name: Custom Kernel Suffix if set
         if: ${{ github.event.inputs.SUFFIX != '' }}
@@ -552,18 +513,6 @@ jobs:
          rm -rf ./sched_ext/.git
          cd common/kernel/sched
 
-      - name: Set BUILD_TIMESTAMP
-        if: ${{ github.event.inputs.BUILD_TIME != '' }}
-        run: |
-          BUILD_TIME="${{ github.event.inputs.BUILD_TIME }}"
-          if [ "${{ github.event.inputs.FAST_BUILD }}" = "true" ]; then
-            echo "KBUILD_BUILD_TIMESTAMP=$BUILD_TIME" >> $GITHUB_ENV
-          else
-            cd kernel_workspace/kernel_platform
-              perl -pi -e "s{UTS_VERSION=\"\\\$(echo \\\$UTS_VERSION \\\$CONFIG_FLAGS \\\$TIMESTAMP \| cut -b -\\\$UTS_LEN)\"}{UTS_VERSION=\"#1 SMP PREEMPT $BUILD_TIME\"}" ./common/scripts/mkcompile_h
-              perl -pi -e "s{UTS_VERSION=\"\\\$(echo \\\$UTS_VERSION \\\$CONFIG_FLAGS \\\$TIMESTAMP \| cut -b -\\\$UTS_LEN)\"}{UTS_VERSION=\"#1 SMP PREEMPT $BUILD_TIME\"}" ./msm-kernel/scripts/mkcompile_h
-          fi
-
       - name: Enable lto=thin For FAST
         if: ${{ (needs.get-config.outputs.KERNEL_VERSION == '5.10' || needs.get-config.outputs.KERNEL_VERSION == '5.15') && github.event.inputs.FAST_BUILD == 'true' }}
         run: |
@@ -646,12 +595,20 @@ jobs:
         if: ${{ github.event.inputs.FAST_BUILD == 'false' || steps.fast_build.outputs.fallback == 'true' }}
         run: |
           cd kernel_workspace
-          if [ -f ./kernel_platform/build_with_bazel.py ]; then
-            ./kernel_platform/oplus/bazel/oplus_modules_variant.sh ${{ needs.get-config.outputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
-            ./kernel_platform/build_with_bazel.py -t ${{ needs.get-config.outputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
+
+          if [ -n "${{ github.event.inputs.BUILD_TIME }}" ]; then
+            export KBUILD_BUILD_TIMESTAMP="${{ github.event.inputs.BUILD_TIME }}"
+            INJECT="KBUILD_BUILD_TIMESTAMP=\"$KBUILD_BUILD_TIMESTAMP\""
           else
-            LTO=thin SYSTEM_DLKM_RE_SIGN=0 BUILD_SYSTEM_DLKM=0 KMI_SYMBOL_LIST_STRICT_MODE=0 \
-            ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ needs.get-config.outputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
+            INJECT=""
+          fi
+
+          if [ -f ./kernel_platform/build_with_bazel.py ]; then
+            eval $INJECT ./kernel_platform/oplus/bazel/oplus_modules_variant.sh ${{ needs.get-config.outputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
+            eval $INJECT ./kernel_platform/build_with_bazel.py -t ${{ needs.get-config.outputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
+          else
+            eval LTO=thin SYSTEM_DLKM_RE_SIGN=0 BUILD_SYSTEM_DLKM=0 KMI_SYMBOL_LIST_STRICT_MODE=0 $INJECT \
+              ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ needs.get-config.outputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
           fi
 
       - name: Make AnyKernel3
