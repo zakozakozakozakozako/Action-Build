@@ -102,7 +102,6 @@ jobs:
       CPUD: ${{ needs.get-config.outputs.CPUD }}
       ANDROID_VERSION: ${{ needs.get-config.outputs.ANDROID_VERSION }}
       KERNEL_VERSION: ${{ needs.get-config.outputs.KERNEL_VERSION }}
-      KBUILD_BUILD_TIMESTAMP: ${{ github.event.inputs.BUILD_TIME != '' && github.event.inputs.BUILD_TIME || '' }}
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
       CCACHE_NOHASHDIR: "true"
       CCACHE_HARDLINK: "true"
@@ -172,7 +171,6 @@ jobs:
           echo "Selected KERNEL_VERSION: ${{ needs.get-config.outputs.KERNEL_VERSION }}"
           echo "Selected BUILD_METHOD: ${{ github.event.inputs.BUILD_METHOD }}"
           echo "Custom SUFFIX: ${{ github.event.inputs.SUFFIX }}"
-          echo "Custom BUILD_TIME: ${{ github.event.inputs.BUILD_TIME }}"
           echo "Selected SUSFS_CI: ${{ github.event.inputs.SUSFS_CI }}"
           echo "Selected VFS: ${{ github.event.inputs.VFS }}"
           echo "Selected KPM: ${{ github.event.inputs.KPM }}"
@@ -514,6 +512,12 @@ jobs:
          cp -r ./sched_ext/* ./common/kernel/sched
          rm -rf ./sched_ext/.git
          cd common/kernel/sched
+
+      - name: Set KBUILD_BUILD_TIMESTAMP
+        run: |
+          if [ -n "${{ github.event.inputs.BUILD_TIME }}" ]; then
+            echo "KBUILD_BUILD_TIMESTAMP=${{ github.event.inputs.BUILD_TIME }}" >> $GITHUB_ENV
+          fi
 
       - name: Enable lto=thin For FAST
         if: ${{ (needs.get-config.outputs.KERNEL_VERSION == '5.10' || needs.get-config.outputs.KERNEL_VERSION == '5.15') && github.event.inputs.FAST_BUILD == 'true' }}
