@@ -521,8 +521,8 @@ jobs:
             echo "KBUILD_BUILD_TIMESTAMP=$BUILD_TIME" >> $GITHUB_ENV
           else
             cd kernel_workspace/kernel_platform
-              perl -pi -e 's{UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP \| cut -b -\$UTS_LEN\)"}{UTS_VERSION="#1 SMP PREEMPT $BUILD_TIME"}' ./common/scripts/mkcompile_h
-              perl -pi -e 's{UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP \| cut -b -\$UTS_LEN\)"}{UTS_VERSION="#1 SMP PREEMPT $BUILD_TIME"}' ./msm-kernel/scripts/mkcompile_h
+              perl -pi -e "s{UTS_VERSION=\"\\\$(echo \\\$UTS_VERSION \\\$CONFIG_FLAGS \\\$TIMESTAMP \| cut -b -\\\$UTS_LEN)\"}{UTS_VERSION=\"#1 SMP PREEMPT $BUILD_TIME\"}"' ./common/scripts/mkcompile_h
+              perl -pi -e "s{UTS_VERSION=\"\\\$(echo \\\$UTS_VERSION \\\$CONFIG_FLAGS \\\$TIMESTAMP \| cut -b -\\\$UTS_LEN)\"}{UTS_VERSION=\"#1 SMP PREEMPT $BUILD_TIME\"}" ./msm-kernel/scripts/mkcompile_h
           fi
 
       - name: Enable lto=thin For FAST
