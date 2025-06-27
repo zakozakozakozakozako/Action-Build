@@ -234,6 +234,35 @@ jobs:
           rm kernel_platform/common/android/abi_gki_protected_exports_* || echo "No protected exports!"
           rm kernel_platform/msm-kernel/android/abi_gki_protected_exports_* || echo "No protected exports!"
 
+      - name: Set BUILD_TIMESTAMP
+        if: ${{ github.event.inputs.BUILD_TIME != '' }}
+        run: |
+          BUILD_TIME="${{ github.event.inputs.BUILD_TIME }}"
+          if [ "${{ github.event.inputs.FAST_BUILD }}" = "true" ]; then
+            echo "KBUILD_BUILD_TIMESTAMP=$BUILD_TIME" >> $GITHUB_ENV
+          else
+            cd kernel_workspace/kernel_platform
+
+            FOUND=0
+
+            for f in ./common/scripts/mkcompile_h ./msm-kernel/scripts/mkcompile_h; do
+              if [ -f "$f" ]; then
+                echo "Found mkcompile_h at $f, patching..."
+                perl -pi -e "s{UTS_VERSION=\"\\\$(echo \\\$UTS_VERSION \\\$CONFIG_FLAGS \\\$TIMESTAMP \| cut -b -\\\$UTS_LEN)\"}{UTS_VERSION=\\\"#1 SMP PREEMPT $BUILD_TIME\\\"}" "$f"
+                FOUND=1
+              else
+                echo "Not found: $f"
+              fi
+            done
+
+            if [ "$FOUND" -eq 0 ]; then
+              echo "::warning ::mkcompile_h not found in default locations, scanning..."
+              find . -type f -name mkcompile_h | tee /tmp/mkcompile_h_found.txt
+              echo "::group::Found mkcompile_h files"
+              cat /tmp/mkcompile_h_found.txt
+              echo "::endgroup::"
+            fi
+
       # 自定义内核后缀
       - name: Custom Kernel Suffix if set
         if: ${{ github.event.inputs.SUFFIX != '' }}
