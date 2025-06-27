@@ -513,19 +513,16 @@ jobs:
          rm -rf ./sched_ext/.git
          cd common/kernel/sched
 
-      - name: Set Build Time (env or patch)
+      - name: Set BUILD_TIMESTAMP
         if: ${{ github.event.inputs.BUILD_TIME != '' }}
         run: |
           BUILD_TIME="${{ github.event.inputs.BUILD_TIME }}"
           if [ "${{ github.event.inputs.FAST_BUILD }}" = "true" ]; then
             echo "KBUILD_BUILD_TIMESTAMP=$BUILD_TIME" >> $GITHUB_ENV
           else
-            cd kernel_workspace
-            for f in ./common/scripts/mkcompile_h ./msm-kernel/scripts/mkcompile_h; do
-              if [ -f "$f" ]; then
-                perl -pi -e "s{UTS_VERSION=\"\\\$echo \\\$UTS_VERSION \\\$CONFIG_FLAGS \\\$TIMESTAMP \\\| cut -b -\\\$UTS_LEN\"}{UTS_VERSION=\"#1 SMP PREEMPT $BUILD_TIME\"}" "$f"
-              fi
-            done
+            cd kernel_workspace/kernel_platform
+              perl -pi -e 's{UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP \| cut -b -\$UTS_LEN\)"}{UTS_VERSION="#1 SMP PREEMPT $BUILD_TIME"}' ./common/scripts/mkcompile_h
+              perl -pi -e 's{UTS_VERSION="\$\(echo \$UTS_VERSION \$CONFIG_FLAGS \$TIMESTAMP \| cut -b -\$UTS_LEN\)"}{UTS_VERSION="#1 SMP PREEMPT $BUILD_TIME"}' ./msm-kernel/scripts/mkcompile_h
           fi
 
       - name: Enable lto=thin For FAST
