@@ -55,6 +55,11 @@ on:
         description: "自定义内核后缀 (留空则使用随机字符串)"
         required: false
         default: ""
+      BUILD_TIME:
+        type: string
+        description: "自定义构建时间 (留空则使用当前时间)"
+        required: false
+        default: "Fri May 30 04:01:05 UTC 2025"
       FAST_BUILD:
         type: boolean
         description: "是否启用极速构建？"
@@ -97,6 +102,7 @@ jobs:
       CPUD: ${{ needs.get-config.outputs.CPUD }}
       ANDROID_VERSION: ${{ needs.get-config.outputs.ANDROID_VERSION }}
       KERNEL_VERSION: ${{ needs.get-config.outputs.KERNEL_VERSION }}
+      KBUILD_BUILD_TIMESTAMP: ${{ github.event.inputs.BUILD_TIME != '' && github.event.inputs.BUILD_TIME || '' }}
       CCACHE_COMPILERCHECK: "%compiler% -dumpmachine; %compiler% -dumpversion"
       CCACHE_NOHASHDIR: "true"
       CCACHE_HARDLINK: "true"
@@ -166,6 +172,7 @@ jobs:
           echo "Selected KERNEL_VERSION: ${{ needs.get-config.outputs.KERNEL_VERSION }}"
           echo "Selected BUILD_METHOD: ${{ github.event.inputs.BUILD_METHOD }}"
           echo "Custom SUFFIX: ${{ github.event.inputs.SUFFIX }}"
+          echo "Custom BUILD_TIME: ${{ github.event.inputs.BUILD_TIME }}"
           echo "Selected SUSFS_CI: ${{ github.event.inputs.SUSFS_CI }}"
           echo "Selected VFS: ${{ github.event.inputs.VFS }}"
           echo "Selected KPM: ${{ github.event.inputs.KPM }}"
