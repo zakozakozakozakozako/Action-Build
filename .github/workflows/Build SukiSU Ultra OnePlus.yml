@@ -110,13 +110,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download Ccache Status
-        if: github.run_number > 1
-        uses: actions/download-artifact@v4
+      - name: Restore Ccache AB Status
+        uses: actions/cache@v3
         with:
-          name: ccache-status
           path: .ccache-status
-        continue-on-error: true
+          key: ccache-status-${{ github.event.inputs.FEIL }}
+          restore-keys: |
+            ccache-status-
 
       - name: Check Disk Space
         run: df -h
@@ -189,7 +189,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-${{ env.CACHE_KEY_SUFFIX }}-2
+          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-${{ env.CACHE_KEY_SUFFIX }}
 
       - name: Initialize Ccache
         run: |
