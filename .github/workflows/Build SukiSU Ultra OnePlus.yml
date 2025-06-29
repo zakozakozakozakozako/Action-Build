@@ -637,7 +637,7 @@ jobs:
       - name: Delete Old Ccache Key
         if: env.DELETE_KEY != ''
         run: |
-          gh cache delete --key "ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-${{ env.DELETE_KEY }}"
+          gh cache delete --key "ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-${{ env.DELETE_KEY }}-3"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
