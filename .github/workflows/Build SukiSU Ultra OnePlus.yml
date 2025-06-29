@@ -189,7 +189,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-${{ env.CACHE_KEY_SUFFIX }}
+          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-${{ env.CACHE_KEY_SUFFIX }}-2
 
       - name: Initialize Ccache
         run: |
@@ -618,6 +618,7 @@ jobs:
       - name: Update Ccache Status
         run: |
           FILE=".ccache-status/ccache-status.json"
+          mkdir -p "$(dirname "$FILE")"
           key="${{ env.CURRENT_KEY }}"
           count=${{ env.NEXT_COUNT }}
           if [ "$count" -ge 5 ]; then
@@ -627,11 +628,11 @@ jobs:
           fi
           jq -n --arg key "$key" --argjson count $count '{key: $key, count: $count}' > "$FILE"
 
-      - name: Upload Ccache Status
-        uses: actions/upload-artifact@v4
+      - name: Save Ccache AB Status
+        uses: actions/cache/save@v4
         with:
-          name: ccache-status
-          path: .ccache-status/ccache-status.json
+          path: .ccache-status
+          key: ccache-status-${{ github.event.inputs.FEIL }}
 
       - name: Delete Old Ccache Key
         if: env.DELETE_KEY != ''
