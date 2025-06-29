@@ -110,14 +110,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Restore Ccache AB Status
-        uses: actions/cache@v3
-        with:
-          path: .ccache-status
-          key: ccache-status-${{ github.event.inputs.FEIL }}
-          restore-keys: |
-            ccache-status-
-
       - name: Check Disk Space
         run: df -h
 
@@ -184,6 +176,14 @@ jobs:
           echo "CACHE_KEY_SUFFIX=$key" >> $GITHUB_ENV
           echo "NEXT_COUNT=$((count + 1))" >> $GITHUB_ENV
           echo "CURRENT_KEY=$key" >> $GITHUB_ENV
+
+      - name: Restore Ccache AB Status
+        uses: actions/cache@v4
+        with:
+          path: .ccache-status
+          key: ccache-status-${{ github.event.inputs.FEIL }}-new
+          restore-keys: |
+            ccache-status-
 
       - name: Restore Ccache
         uses: actions/cache@v3
@@ -621,10 +621,10 @@ jobs:
           mkdir -p "$(dirname "$FILE")"
           key="${{ env.CURRENT_KEY }}"
           count=${{ env.NEXT_COUNT }}
-          if [ "$count" -ge 5 ]; then
+          if [ "$count" -ge 2 ]; then
             key=$([ "$key" = "A" ] && echo "B" || echo "A")
             count=0
-            echo "DELETE_KEY=${{ env.CURRENT_KEY }}" >> $GITHUB_ENV
+            echo "DELETE_KEY=$key" >> $GITHUB_ENV
           fi
           jq -n --arg key "$key" --argjson count $count '{key: $key, count: $count}' > "$FILE"
 
@@ -632,7 +632,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: .ccache-status
-          key: ccache-status-${{ github.event.inputs.FEIL }}
+          key: ccache-status-${{ github.event.inputs.FEIL }}-new
 
       - name: Delete Old Ccache Key
         if: env.DELETE_KEY != ''
