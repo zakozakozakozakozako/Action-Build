@@ -110,6 +110,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Download Ccache Status
+        uses: actions/download-artifact@v4
+        with:
+          name: ccache-status
+          path: .ccache-status
+        continue-on-error: true
+
       - name: Check Disk Space
         run: df -h
 
@@ -132,7 +139,7 @@ jobs:
           sudo swapon /swapfile
           free -h
 
-      - name: Set cache environment
+      - name: Set Cache Environment
         run: |
           echo "CCACHE_DIR=$HOME/.ccache_${{ github.event.inputs.FEIL }}" >> $GITHUB_ENV
           mkdir -p "$HOME/.ccache_${{ github.event.inputs.FEIL }}"
@@ -142,26 +149,6 @@ jobs:
         run: |
           git config --global user.name "Numbersf"
           git config --global user.email "263623064@qq.com"
-
-      - name: Configure APTC
-        run: |
-          APT_CACHE_DIR="$HOME/apt-cache"
-          mkdir -p "$APT_CACHE_DIR"/{archives,lists/partial}
-          echo "Dir::Cache \"$APT_CACHE_DIR\";" | sudo tee /etc/apt/apt.conf.d/90user-cache
-          echo "Dir::Cache::archives \"$APT_CACHE_DIR/archives\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
-          echo "Dir::State::lists \"$APT_CACHE_DIR/lists\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
-          echo "Acquire::Check-Valid-Until \"false\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
-          echo "Acquire::Languages \"none\";" | sudo tee -a /etc/apt/apt.conf.d/90user-cache
-          sudo chown -R $USER:$USER "$APT_CACHE_DIR"
-
-      - name: Set APT Cache
-        uses: actions/cache@v3
-        with:
-          path: ${{ env.HOME }}/apt-cache
-          key: ${{ runner.os }}-apt-${{ hashFiles('.github/workflows/Build SukiSU Ultra OnePlus.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-apt-
-
       - name: Debug Show Selected Inputs
         run: |
           echo "Selected CPU: ${{ needs.get-config.outputs.CPU }}"
@@ -180,21 +167,27 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          sudo rm -f /var/lib/apt/lists/lock /var/lib/dpkg/lock
-          APT_CACHE_DIR="$HOME/apt-cache"
-          mkdir -p "$APT_CACHE_DIR/lists/partial"
-          sudo apt -o Dir::Cache="$APT_CACHE_DIR" update -qq
-          sudo DEBIAN_FRONTEND=noninteractive apt -o Dir::Cache="$APT_CACHE_DIR" install -yq --no-install-recommends \
-            python3 git curl ccache libelf-dev \
-            build-essential flex bison libssl-dev \
-            libncurses-dev liblz4-tool zlib1g-dev \
-            libxml2-utils rsync unzip
+          sudo apt-get update
+          sudo apt-get install -y python3 git curl ccache
+
+      - name: Determine Ccache Key Suffix
+        id: ablogic
+        run: |
+          FILE=".ccache-status/ccache-status.json"
+          if [ ! -f "$FILE" ]; then
+            echo '{"key":"A","count":0}' > "$FILE"
+          fi
+          key=$(jq -r .key "$FILE")
+          count=$(jq -r .count "$FILE")
+          echo "CACHE_KEY_SUFFIX=$key" >> $GITHUB_ENV
+          echo "NEXT_COUNT=$((count + 1))" >> $GITHUB_ENV
+          echo "CURRENT_KEY=$key" >> $GITHUB_ENV
 
       - name: Restore Ccache
         uses: actions/cache@v3
         with:
           path: ${{ env.CCACHE_DIR }}
-          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-5
+          key: ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-${{ env.CACHE_KEY_SUFFIX }}
 
       - name: Initialize Ccache
         run: |
@@ -347,7 +340,7 @@ jobs:
       - name: Add SukiSU Ultra
         run: |
           cd kernel_workspace/kernel_platform
-          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-1.5.8
+          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-main
           cd ./KernelSU
           KSU_VERSION=$(expr $(/usr/bin/git rev-list --count main) "+" 10700)
           echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
@@ -357,7 +350,7 @@ jobs:
       - name: Apply Patches SukiSU Ultra
         run: |
           cd kernel_workspace
-          git clone https://github.com/ShirkNeko/susfs4ksu.git -b gki-${{ needs.get-config.outputs.ANDROID_VERSION }}-${{ needs.get-config.outputs.KERNEL_VERSION }}
+          git clone https://gitlab.com/simonpunk/susfs4ksu.git -b gki-${{ needs.get-config.outputs.ANDROID_VERSION }}-${{ needs.get-config.outputs.KERNEL_VERSION }}
           git clone https://github.com/ShirkNeko/SukiSU_patch.git
           cd kernel_platform
           echo "正在拉取susfs补丁"
@@ -483,6 +476,10 @@ jobs:
             echo "CONFIG_KSU_SUSFS_SUS_SU=y" >> "$CONFIG_FILE"
           fi
 
+          # TMPFS配置*
+          echo "CONFIG_TMPFS_XATTR=y" >> "$CONFIG_FILE"
+          echo "CONFIG_TMPFS_POSIX_ACL=y" >> "$CONFIG_FILE"
+
           # BBR配置*
           echo "CONFIG_TCP_CONG_ADVANCED=y" >> "$CONFIG_FILE"
           echo "CONFIG_TCP_CONG_BBR=y" >> "$CONFIG_FILE"
@@ -491,7 +488,13 @@ jobs:
           echo "CONFIG_TCP_CONG_WESTWOOD=n" >> "$CONFIG_FILE"
           echo "CONFIG_TCP_CONG_HTCP=n" >> "$CONFIG_FILE"
 
-          # LZ4KD配置*
+          # ECN配置*
+          echo "CONFIG_IP_ECN=y" >> "$CONFIG_FILE"
+          echo "CONFIG_TCP_ECN=y" >> "$CONFIG_FILE"
+          echo "CONFIG_IPV6_ECN=y" >> "$CONFIG_FILE"
+          echo "CONFIG_IP_NF_TARGET_ECN=y" >> "$CONFIG_FILE"
+
+          # ZRAM配置*
           if [ "${{ github.event.inputs.ZRAM }}" = "true" ]; then
             echo "CONFIG_CRYPTO_LZ4HC=y" >> "$CONFIG_FILE"
             echo "CONFIG_CRYPTO_LZ4K=y" >> "$CONFIG_FILE"
@@ -500,7 +503,8 @@ jobs:
             echo "CONFIG_CRYPTO_LZ4K_OPLUS=y" >> "$CONFIG_FILE"
             echo "CONFIG_ZRAM_WRITEBACK=y" >> "$CONFIG_FILE"
           fi
-          # 移除构建校验
+
+          # 移除构建审查
           sed -i 's/check_defconfig//' ./common/build.config.gki
 
       # 风驰内核，以 sm8750 为主体，其他 CPU 可能无效或者无法跑出
@@ -512,6 +516,12 @@ jobs:
          cp -r ./sched_ext/* ./common/kernel/sched
          rm -rf ./sched_ext/.git
          cd common/kernel/sched
+
+      - name: Set KBUILD_BUILD_TIMESTAMP
+        run: |
+          if [ -n "${{ github.event.inputs.BUILD_TIME }}" ]; then
+            echo "KBUILD_BUILD_TIMESTAMP=${{ github.event.inputs.BUILD_TIME }}" >> $GITHUB_ENV
+          fi
 
       - name: Enable lto=thin For FAST
         if: ${{ (needs.get-config.outputs.KERNEL_VERSION == '5.10' || needs.get-config.outputs.KERNEL_VERSION == '5.15') && github.event.inputs.FAST_BUILD == 'true' }}
@@ -595,21 +605,38 @@ jobs:
         if: ${{ github.event.inputs.FAST_BUILD == 'false' || steps.fast_build.outputs.fallback == 'true' }}
         run: |
           cd kernel_workspace
-
-          if [ -n "${{ github.event.inputs.BUILD_TIME }}" ]; then
-            export KBUILD_BUILD_TIMESTAMP="${{ github.event.inputs.BUILD_TIME }}"
-            INJECT="KBUILD_BUILD_TIMESTAMP=\"$KBUILD_BUILD_TIMESTAMP\""
-          else
-            INJECT=""
-          fi
-
           if [ -f ./kernel_platform/build_with_bazel.py ]; then
-            eval $INJECT ./kernel_platform/oplus/bazel/oplus_modules_variant.sh ${{ needs.get-config.outputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
-            eval $INJECT ./kernel_platform/build_with_bazel.py -t ${{ needs.get-config.outputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
+            ./kernel_platform/oplus/bazel/oplus_modules_variant.sh ${{ needs.get-config.outputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
+            ./kernel_platform/build_with_bazel.py --lto=thin -t ${{ needs.get-config.outputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
           else
-            eval LTO=thin SYSTEM_DLKM_RE_SIGN=0 BUILD_SYSTEM_DLKM=0 KMI_SYMBOL_LIST_STRICT_MODE=0 $INJECT \
-              ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ needs.get-config.outputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
+            LTO=thin SYSTEM_DLKM_RE_SIGN=0 BUILD_SYSTEM_DLKM=0 KMI_SYMBOL_LIST_STRICT_MODE=0 \
+            ./kernel_platform/oplus/build/oplus_build_kernel.sh ${{ needs.get-config.outputs.CPUD }} ${{ github.event.inputs.BUILD_METHOD }}
           fi
+
+      - name: Update Ccache Status
+        run: |
+          FILE=".ccache-status/ccache-status.json"
+          key="${{ env.CURRENT_KEY }}"
+          count=${{ env.NEXT_COUNT }}
+          if [ "$count" -ge 5 ]; then
+            key=$([ "$key" = "A" ] && echo "B" || echo "A")
+            count=0
+            echo "DELETE_KEY=${{ env.CURRENT_KEY }}" >> $GITHUB_ENV
+          fi
+          jq -n --arg key "$key" --argjson count $count '{key: $key, count: $count}' > "$FILE"
+
+      - name: Upload Ccache Status
+        uses: actions/upload-artifact@v4
+        with:
+          name: ccache-status
+          path: .ccache-status/ccache-status.json
+
+      - name: Delete Old Ccache Key
+        if: env.DELETE_KEY != ''
+        run: |
+          gh cache delete --key "ccache-${{ runner.os }}-${{ github.ref_name }}-${{ github.event.inputs.FEIL }}-${{ github.event.inputs.BUILD_METHOD }}-${{ github.event.inputs.FAST_BUILD == 'true' && 'alpha' || 'beta' }}-${{ env.DELETE_KEY }}"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Make AnyKernel3
         run: |
@@ -658,7 +685,7 @@ jobs:
             done
           fi
 
-      - name: Apply patch_linux and replace Image
+      - name: Apply patch_linux and Replace Image
         if: ${{ github.event.inputs.KPM == 'true' }}
         run: |
           cd kernel_workspace/kernel_platform/out/FinalImageFind
