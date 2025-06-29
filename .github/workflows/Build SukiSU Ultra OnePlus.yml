@@ -168,12 +168,13 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y python3 git curl ccache
+          sudo apt-get install -y python3 git curl ccache jq
 
       - name: Determine Ccache Key Suffix
         id: ablogic
         run: |
           FILE=".ccache-status/ccache-status.json"
+          mkdir -p "$(dirname "$FILE")"
           if [ ! -f "$FILE" ]; then
             echo '{"key":"A","count":0}' > "$FILE"
           fi
