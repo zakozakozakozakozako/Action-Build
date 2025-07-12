@@ -412,11 +412,10 @@ jobs:
           curl -LO --retry 5 --retry-delay 2 --retry-connrefused "https://raw.githubusercontent.com/OnePlusOSS/kernel_manifest/oneplus/$cpu/$file.xml"
           mv "$file.xml" ".repo/manifests_fallback/${file}.xml"
 
-      - name: Add KernelSU-SukiSU Ultra
+      - name: Add SukiSU Ultra
         run: |
             cd kernel_workspace/kernel_platform
 
-            # 解析分支和自定义标识
             META="${{ github.event.inputs.KSU_META }}"
             BRANCH_NAME="${META%%/*}"
             CUSTOM_TAG="${META#*/}"
@@ -427,8 +426,8 @@ jobs:
             cd ./KernelSU
             KSU_API_VERSION=$(curl -fsSL "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/$BRANCH_NAME/kernel/Makefile" | \
               grep -oP 'KSU_VERSION_API\s*:?=\s*\K[0-9.]+' || echo "0.0.0")
+            KSU_VERSION=$(expr $(git rev-list --count main 2>/dev/null || echo 13000) + 10700)
             KSU_VERSION_FULL="v${KSU_API_VERSION}-${CUSTOM_TAG}@${BRANCH_NAME}"
-            KSU_VERSION=$(expr 10000 + 700)
             echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
             echo "KSU_VERSION_FULL=$KSU_VERSION_FULL" >> $GITHUB_ENV
             export KSU_VERSION=$KSU_VERSION
