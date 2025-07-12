@@ -412,51 +412,43 @@ jobs:
           curl -LO --retry 5 --retry-delay 2 --retry-connrefused "https://raw.githubusercontent.com/OnePlusOSS/kernel_manifest/oneplus/$cpu/$file.xml"
           mv "$file.xml" ".repo/manifests_fallback/${file}.xml"
 
-      - name: Setup custom KernelSU version
+      - name: Add SukiSU Ultra
         run: |
             cd kernel_workspace/kernel_platform
 
             META="${{ github.event.inputs.KSU_META }}"
             BRANCH_NAME="${META%%/*}"
             CUSTOM_TAG="${META#*/}"
-
             echo "分支名: $BRANCH_NAME"
             echo "自定义版本标识: $CUSTOM_TAG"
 
-            echo "::group:: 安装 KernelSU（SukiSU Ultra）"
             curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s "$BRANCH_NAME"
-            echo "::endgroup::"
-
             cd ./KernelSU
 
-            echo "::group:: 解析版本号（KSU_API_VERSION）"
-            KSU_API_VERSION=$(grep -m1 'KSU_VERSION_API' Makefile | sed -E 's/[^0-9.]*([0-9]+\.[0-9]+\.[0-9]+).*/\1/')
-            if [ -z "$KSU_API_VERSION" ]; then
-                  echo "未检测到 KSU_VERSION_API，使用默认值 3.1.7"
-                  KSU_API_VERSION="3.1.7"
-            fi
+            echo "::group:: 获取 KSU_VERSION_API"
+            RAW_MAKEFILE=$(curl -fsSL "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/$BRANCH_NAME/kernel/Makefile" || echo "")
+            echo "$RAW_MAKEFILE" | grep -m1 "KSU_VERSION_API :=" || echo "(未找到 KSU_VERSION_API)"
+            KSU_API_VERSION=$(echo "$RAW_MAKEFILE" | grep -m1 "KSU_VERSION_API :=" | cut -d'=' -f2 | tr -d '[:space:]')
+            [[ -z "$KSU_API_VERSION" ]] && KSU_API_VERSION="3.1.7"
             echo "KSU_API_VERSION=$KSU_API_VERSION"
             echo "::endgroup::"
 
-            echo "::group:: 生成自定义版本号（KSU_VERSION_FULL）"
-      KSU_VERSION_FULL="v${KSU_API_VERSION}-${CUSTOM_TAG}@${BRANCH_NAME}"
-            echo "KSU_VERSION_FULL=$KSU_VERSION_FULL"
-            echo "::endgroup::"
-
-            echo "::group:: 生成整型版本号（KSUVER）"
-            GIT_COUNT=$(git rev-list --count "$BRANCH_NAME" 2>/dev/null || echo 300)
-            KSUVER=$(expr 10000 + "$GIT_COUNT" + 700)
-            echo "KSUVER=$KSUVER"
-            echo "::endgroup::"
-
-            echo "::group:: 写入环境变量"
             echo "KSU_API_VERSION=$KSU_API_VERSION" >> $GITHUB_ENV
-            echo "KSU_VERSION_FULL=$KSU_VERSION_FULL" >> $GITHUB_ENV
-            echo "KSUVER=$KSUVER" >> $GITHUB_ENV
-            echo "::endgroup::"
 
-            echo "::group:: Makefile 中原始版本信息预览"
-            grep -E 'KSU_VERSION_(API|FULL)' Makefile || echo "(未找到相关定义)"
+            KSU_VERSION_FULL="v$KSU_API_VERSION-$CUSTOM_TAG@$BRANCH_NAME"
+            echo "KSU_VERSION_FULL=$KSU_VERSION_FULL" >> $GITHUB_ENV
+
+            sed -i '/KSU_VERSION_API :=/d' kernel/Makefile
+            sed -i '/KSU_VERSION_FULL :=/d' kernel/Makefile
+
+            echo "KSU_VERSION_API := $KSU_API_VERSION" >> kernel/Makefile
+            echo "KSU_VERSION_FULL := $KSU_VERSION_FULL" >> kernel/Makefile
+
+            KSU_VERSION=$(expr $(git rev-list --count main 2>/dev/null || echo 13000) + 10700)
+            echo "KSUVER=$KSU_VERSION" >> $GITHUB_ENV
+
+            echo "::group:: 最终 Makefile 中版本信息预览"
+            grep -A5 "KSU_VERSION_API" kernel/Makefile || echo "(未找到 KSU_VERSION_API)"
             echo "::endgroup::"
 
       - name: Apply Patches SukiSU Ultra
