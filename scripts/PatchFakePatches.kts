@@ -349,6 +349,10 @@ fun apply() {
             val namespace = f("fs/namespace.c")
             namespace.deleteLine(Regex("""^#include <trace/hooks/blk\.h>$"""))
             logApply(namespace, "removed #include <trace/hooks/blk.h>")
+
+            val superC = f("fs/super.c")
+            superC.deleteLineAndFollowing(Regex("""^#include <trace/hooks/fs\.h>$"""), 1)
+            logApply(superC, "removed #include <trace/hooks/fs.h>")
         }
     }
 
@@ -463,6 +467,21 @@ fun revert() {
             val base = f("fs/proc/base.c")
             base.deleteLine(Regex("""^#include <linux/dma-buf\.h>$"""))
             logRevert(base, "removed #include <linux/dma-buf.h>")
+        }
+        if (sublevel >= 157) {
+            val namespace = f("fs/namespace.c")
+            namespace.insertAfter(
+                Regex("""^#include "internal\.h"$"""),
+                "#include <trace/hooks/blk.h>"
+            )
+            logRevert(namespace, "restored #include <trace/hooks/blk.h> directly after #include \"internal.h\"")
+
+            val superC = f("fs/super.c")
+            superC.insertAfter(
+                Regex("""^#include "internal\.h"$"""),
+                "#include <trace/hooks/fs.h>"
+            )
+            logRevert(superC, "restored #include <trace/hooks/fs.h> directly after #include \"internal.h\"")
         }
     }
 
