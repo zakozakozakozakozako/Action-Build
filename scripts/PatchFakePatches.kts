@@ -54,6 +54,24 @@ fun File.deleteLine(pattern: Regex) {
     writeText(out.joinToString("\n") + "\n")
 }
 
+/** sed '/pattern/,+N d' —— 删除匹配行及其后 N 行 */
+fun File.deleteLineAndFollowing(pattern: Regex, extraLines: Int) {
+    val out = mutableListOf<String>()
+    var skip = 0
+    for (line in readLines()) {
+        if (skip > 0) {
+            skip--
+            continue
+        }
+        if (pattern.containsMatchIn(line)) {
+            skip = extraLines
+            continue
+        }
+        out.add(line)
+    }
+    writeText(out.joinToString("\n") + "\n")
+}
+
 /** sed '/start/,/end/d' —— 删除从 start 到 end(含首尾)的整段,支持多段 */
 fun File.deleteBlock(start: Regex, end: Regex) {
     val out = mutableListOf<String>()
