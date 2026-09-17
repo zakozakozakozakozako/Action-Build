@@ -6,7 +6,7 @@ on:
         type: choice
         description: "配置文件//Configuration file"
         required: true
-        default: oneplus_ace2_pro_b
+        default: oneplus_15
         options:
           - oneplus_nord_n30_se_5g_v
           - oneplus_10r_v
@@ -97,7 +97,7 @@ on:
         type: string
         description: "自定义构建时间(输入F使用UTCT或-1关闭)//Custom build time (Enter F to use UTCT, or -1 to disable)"
         required: false
-        default: "Fri Dec 12 11:37:03 UTC 2025"
+        default: "Wed Jul 15 11:18:49 UTC 2026"
       KSU_META:
         type: string
         description: "管理器分支名(必填)/内置分支名(必填)/自定义版本标识(留空不修改)/回退分支提交哈希版本(留空不修改)//Manager Branch name (Required) / Builtin branch name (Required) / Custom version identifier (Leave blank to not modify) / Rollback branch commit hash version (Leave blank to not modify)"
