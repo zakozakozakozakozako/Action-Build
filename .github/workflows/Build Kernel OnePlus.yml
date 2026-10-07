@@ -217,6 +217,7 @@ jobs:
         run: |
           set -e
           cd "$GITHUB_WORKSPACE"
+          exit 1
           if [[ "$FILE" =~ ^(.+)_([a-zA-Z])$ ]]; then
             FILE_CONF="${BASH_REMATCH[1]}"
           else
