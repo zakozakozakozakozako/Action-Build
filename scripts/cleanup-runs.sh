@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Cleanup helper for GitHub Actions runs.
-# Usage: cleanup-runs.sh <validate|delete-by-target|cancel-active|delete-by-conclusion|self-history>
+# Usage: cleanup-runs.sh <validate|delete-by-target|cancel-active|delete-by-conclusion|self-history|summary>
 # Env: REPO, GH_TOKEN, GITHUB_STEP_SUMMARY, CURRENT_RUN_ID, WORKFLOW_NAME, COUNT (0 = unlimited),
 # TARGET_RUN_NUMBERS, TARGET_RUN_IDS, DELETE_FAILED, DELETE_SUCCESS, DELETE_CANCELLED, REVERSE_ORDER
 set -e
@@ -53,7 +53,7 @@ run_in_parallel() {
   ok=$(grep -c '^OK' "$log" || true)
   fail=$(grep -c '^FAIL' "$log" || true)
   echo "$1: 成功 $ok，失败 $fail"
-  echo "| $1 | $ok | $fail |" >> "$GITHUB_STEP_SUMMARY"
+  echo "| $1 | $ok | $fail |" >> "$RUNNER_TEMP/cleanup-rows.md"
 }
 
 limit_file() {
@@ -75,13 +75,17 @@ validate() {
     echo "❌ count 必须为非负整数（0 = 不限制）"
     exit 1
   fi
+  echo "✅ 输入校验通过"
+}
+
+summary() {
   {
     echo "### 🧹 清理结果汇总"
     echo ""
     echo "| 项目 | 成功 | 失败 |"
     echo "|---|---|---|"
+    cat "$RUNNER_TEMP/cleanup-rows.md" 2>/dev/null || true
   } >> "$GITHUB_STEP_SUMMARY"
-  echo "✅ 输入校验通过"
 }
 
 delete_by_target() {
@@ -144,8 +148,9 @@ case "$1" in
   cancel-active) cancel_active ;;
   delete-by-conclusion) delete_by_conclusion ;;
   self-history) self_history ;;
+  summary) summary ;;
   *)
-    echo "用法: $0 <validate|delete-by-target|cancel-active|delete-by-conclusion|self-history>" >&2
+    echo "用法: $0 <validate|delete-by-target|cancel-active|delete-by-conclusion|self-history|summary>" >&2
     exit 2
     ;;
 esac
