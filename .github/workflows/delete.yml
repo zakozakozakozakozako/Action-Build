@@ -150,8 +150,12 @@ jobs:
                 else { fail++; console.log(`删除失败: ${hit[i + j].key} (${r.reason.message})`); }
               });
             }
-            await core.summary.addRaw(`| 缓存清理 (${mode}) | ${ok} | ${fail} |\n`).write();
+            require('fs').appendFileSync(`${process.env.RUNNER_TEMP}/cleanup-rows.md`, `| 缓存清理 (${mode}) | ${ok} | ${fail} |\n`);
 
       - name: Clean this workflow's own run history
         if: ${{ always() && inputs.self_cleanup }}
         run: bash scripts/cleanup-runs.sh self-history
+
+      - name: Write summary
+        if: ${{ always() }}
+        run: bash scripts/cleanup-runs.sh summary
