@@ -110,20 +110,22 @@ cancel_active() {
 }
 
 delete_by_conclusion() {
-  local conclusions=() pattern wid ids
+  local conclusions=() pattern wid runs ids
   if [ "$DELETE_FAILED" = "true" ]; then conclusions+=("failure"); fi
   if [ "$DELETE_SUCCESS" = "true" ]; then conclusions+=("success"); fi
   if [ "$DELETE_CANCELLED" = "true" ]; then conclusions+=("cancelled"); fi
   pattern="^($(IFS='|'; echo "${conclusions[*]}"))$"
 
   wid=$(require_wf_id "$WORKFLOW_NAME")
+  runs=$(mktemp)
   ids=$(mktemp)
-  list_runs "$wid" | awk -v re="$pattern" -v cur="$CURRENT_RUN_ID" '$4 ~ re && $1 != cur {print $1}' > "$ids"
+  list_runs "$wid" | awk -v cur="$CURRENT_RUN_ID" '$1 != cur' > "$runs"
   if [ "$REVERSE_ORDER" = "true" ]; then
-    tac "$ids" > "$ids.tmp" && mv "$ids.tmp" "$ids"
+    tac "$runs" > "$runs.tmp" && mv "$runs.tmp" "$runs"
   fi
-  limit_file "$ids"
-  echo "待删除 $(wc -l < "$ids") 条（${conclusions[*]}，上限: $COUNT）"
+  limit_file "$runs"
+  awk -v re="$pattern" '$4 ~ re {print $1}' "$runs" > "$ids"
+  echo "按顺序取 $(wc -l < "$runs") 条，其中匹配 $(wc -l < "$ids") 条待删除（${conclusions[*]}，上限: $COUNT）"
   run_in_parallel "批量删除" delete_run < "$ids"
 }
 
