@@ -24,7 +24,7 @@ on:
           - apt-cache
           - thinlto-cache
       count:
-        description: '最多删除的运行总条数（0 = 不限制）'
+        description: '最多处理的运行条数（0 = 不限制）'
         required: false
         default: '0'
       delete_failed:
