@@ -399,7 +399,7 @@ jobs:
 
       - name: Install Dependencies
         run: |
-          export APT_PACKAGES="python3 git curl libelf-dev build-essential flex bison libssl-dev libncurses-dev liblz4-tool zlib1g-dev libxml2-utils rsync unzip gawk dos2unix kmod libdw-dev elfutils dwarves"
+          export APT_PACKAGES="python3 git curl libelf-dev build-essential flex bison libssl-dev libncurses-dev lz4 zlib1g-dev libxml2-utils rsync unzip gawk dos2unix kmod libdw-dev elfutils dwarves"
           bash "$GITHUB_WORKSPACE/kernel_workspace/Action-Build/scripts/cache_apt_pkgs.sh" ~/.apt-pkg-cache
 
       - name: Setup Kotlin
@@ -1077,6 +1077,7 @@ jobs:
           # DROID_SPACES配置*
           if [ "${{ github.event.inputs.DROID_SPACES }}" = "true" ]; then
             set_config "CONFIG_NTSYNC=y"
+            set_config "CONFIG_MACVLAN=y"
             set_config "CONFIG_SYSVIPC=y"
             set_config "CONFIG_DEVTMPFS=y"
             set_config "CONFIG_PID_NS=y"
@@ -1171,6 +1172,16 @@ jobs:
         run: |
           echo "Disabling GPUEB for MTK kernel 5.10"
           sed -i '/obj-y.*gpueb/d' kernel_workspace/kernel-5.10/drivers/gpu/mediatek/Makefile
+
+      - name: Fix libbpf for new glibc
+        run: |
+          cd kernel_workspace/kernel_platform/common
+          f="./tools/lib/bpf/libbpf.c"
+          if [ -f "$f" ]; then
+            sed -i -E 's/(\bres = )strstr\(sym_name, "\.llvm\."\)/\1(char *)strstr(sym_name, ".llvm.")/' "$f"
+            sed -i -E 's/(\bnext_path = )strchr\(s, '"'"':'"'"'\)/\1(char *)strchr(s, '"'"':'"'"')/' "$f"
+            grep -nE '\(char \*\)(strstr|strchr)' "$f" || echo "✅ 匹配失败，当前云控ubuntu版本无需此操作"
+          fi
 
       - name: Build Kernel FAST
         if: ${{ github.event.inputs.FAST_BUILD == 'true' }}
